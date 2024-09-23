@@ -1,0 +1,66 @@
+import tkinter as tk
+from tkinter import scrolledtext, ttk  # Importiere ttk für Dropdown
+from pybit.unified_trading import HTTP
+
+# Deine API-Schlüssel
+API_KEY = "YOUR_API_KEY"  # Ersetze mit deinem API-Schlüssel
+API_SECRET = "YOUR_API_SECRET"  # Ersetze mit deinem API-Geheimnis
+session = HTTP(
+    testnet=False,  # Setze auf False, wenn du auf dem Hauptnetz arbeiten möchtest
+    api_key=API_KEY,
+    api_secret=API_SECRET,
+)
+
+# Wallet-Balance abfragen
+def get_wallet_balance(coin="BTC"):
+    try:
+        response = session.get_wallet_balance(
+            accountType="UNIFIED",
+            coin=coin,
+        )
+
+        output_area.delete(1.0, tk.END)  # Vorherige Ausgaben löschen
+
+        if response['retCode'] == 0:
+            total_balance = response['result']['list'][0]
+            output_area.insert(tk.END, "Wallet-Balance Informationen:\n")
+            output_area.insert(tk.END, f"Gesamt Eigenkapital: {total_balance['totalEquity']}\n")
+            output_area.insert(tk.END, f"Verfügbares Guthaben: {total_balance['totalAvailableBalance']}\n")
+            output_area.insert(tk.END, f"Gesamt Wallet-Balance: {total_balance['totalWalletBalance']}\n")
+
+            for coin_info in total_balance['coin']:
+                output_area.insert(tk.END, f"{coin_info['coin']} Wallet-Balance: {coin_info['walletBalance']}\n")
+        else:
+            output_area.insert(tk.END, f"Fehler: {response['retMsg']}\n")
+    except Exception as e:
+        output_area.insert(tk.END, f"Ein Fehler ist aufgetreten: {str(e)}\n")
+
+# Aktualisierung der Wallet-Balance
+def update_wallet_balance():
+    selected_coin = coin_selection.get()  # Hole den ausgewählten Coin
+    get_wallet_balance(selected_coin)
+    root.after(1000, update_wallet_balance)  # Update alle 1000 ms (1 Sekunde)
+
+# Funktionen für die GUI
+def on_get_wallet_balance():
+    update_wallet_balance()  # Starte die Aktualisierung
+
+# GUI erstellen
+root = tk.Tk()
+root.title("Bybit Wallet Tracker")
+
+frame = tk.Frame(root)
+frame.pack(pady=10)
+
+# Dropdown für die Coin-Auswahl
+coin_selection = ttk.Combobox(frame, values=["BTC", "ETH", "USDT"])
+coin_selection.set("BTC")  # Standardwert
+coin_selection.pack(side=tk.LEFT, padx=5)
+
+btn_balance = tk.Button(frame, text="Wallet-Balance abrufen", command=on_get_wallet_balance)
+btn_balance.pack(side=tk.LEFT, padx=5)
+
+output_area = scrolledtext.ScrolledText(root, width=80, height=20)
+output_area.pack(padx=10, pady=10)
+
+root.mainloop()
